@@ -1,0 +1,51 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login | FraudDesk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'fraud_app/styles.css' %}">
+</head>
+<body>
+    <main class="auth-page">
+        <section class="auth-panel">
+            <div class="auth-brand">
+                <span class="brand-mark">FD</span>
+                <div>
+                    <strong>FraudDesk</strong>
+                    <small>Secure analyst access</small>
+                </div>
+            </div>
+            <div class="auth-copy">
+                <p class="eyebrow">Authentication</p>
+                <h1>Sign in to monitor transaction risk</h1>
+                <p>Use your Django user account to access dashboard analytics, predictions, and saved audit history.</p>
+            </div>
+
+            {% if form.errors %}
+            <div class="alert-panel compact-alert">
+                <strong>Login failed</strong>
+                <p>Please check your username and password.</p>
+            </div>
+            {% endif %}
+
+            <form method="post" class="auth-form">
+                {% csrf_token %}
+                <label>
+                    <span>Username</span>
+                    <input type="text" name="username" autocomplete="username" required>
+                </label>
+                <label>
+                    <span>Password</span>
+                    <input type="password" name="password" autocomplete="current-password" required>
+                </label>
+                <button type="submit" class="primary-action">Login</button>
+            </form>
+        </section>
+    </main>
+</body>
+</html>

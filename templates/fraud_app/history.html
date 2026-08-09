@@ -1,0 +1,87 @@
+{% extends "fraud_app/base.html" %}
+
+{% block title %}History | FraudDesk{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">Audit trail</p>
+    <h1>Prediction history</h1>
+    <p>Recent model outputs stored in the local SQLite database.</p>
+</section>
+
+<section class="panel filter-panel">
+    <div class="panel-heading">
+        <div>
+            <p class="eyebrow">History filters</p>
+            <h2>Review saved predictions</h2>
+        </div>
+    </div>
+    <form method="get" class="history-filter-form">
+        <label>
+            <span>Prediction type</span>
+            <select name="prediction">
+                <option value="all" {% if prediction_filter == "all" %}selected{% endif %}>All predictions</option>
+                <option value="fraud" {% if prediction_filter == "fraud" %}selected{% endif %}>Fraud only</option>
+                <option value="legitimate" {% if prediction_filter == "legitimate" %}selected{% endif %}>Legitimate only</option>
+            </select>
+        </label>
+        <button type="submit" class="primary-action">Apply</button>
+        <a class="secondary-action" href="{% url 'fraud_app:history' %}">Reset</a>
+    </form>
+</section>
+
+<section class="panel">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Reference ID</th>
+                    <th>Prediction</th>
+                    <th>Probability</th>
+                    <th>Risk Level</th>
+                    <th>Status</th>
+                    <th>Action Taken</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in transactions %}
+                <tr>
+                    <td>{{ item.id }}</td>
+                    <td><code>{{ item.reference_id }}</code></td>
+                    <td>
+                        <span class="risk-pill {% if item.prediction %}danger{% else %}safe{% endif %}">
+                            {% if item.prediction %}Fraud{% else %}Legitimate{% endif %}
+                        </span>
+                    </td>
+                    <td>{{ item.probability|floatformat:"4" }}</td>
+                    <td>
+                        <span class="badge {% if item.risk_level == 'High risk' or item.risk_level == 'High' %}badge-danger{% elif item.risk_level == 'Medium risk' or item.risk_level == 'Medium' %}badge-warning{% else %}badge-success{% endif %}">
+                            {{ item.risk_level }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge {% if item.prediction %}badge-danger{% else %}badge-success{% endif %}">
+                            {{ item.status }}
+                        </span>
+                    </td>
+                    <td>{{ item.action_taken }}</td>
+                    <td>{{ item.created_date }}</td>
+                    <td>{{ item.created_time }}</td>
+                    <td>
+                        <a href="{% url 'fraud_app:transaction_report' item.id %}" target="_blank" class="secondary-action compact-button" style="font-size: 0.8rem; padding: 4px 8px; font-weight: 700;">Report</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="muted">No predictions have been saved yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,187 @@
+{% extends "fraud_app/base.html" %}
+
+{% block title %}Predict | FraudDesk{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">Live scoring</p>
+    <h1>Predict transaction risk</h1>
+    <p>Load a real sample transaction from the dataset, review the filled values, then score it with the trained model.</p>
+</section>
+
+{% if error %}
+<section class="alert-panel">
+    <strong>Prediction failed</strong>
+    <p>{{ error }}</p>
+</section>
+{% endif %}
+
+<!-- Simulated Loading Screen Overlay -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <div id="loadingStatus" class="loading-status-text" style="transition: opacity 0.2s ease;">Analyzing Transaction...</div>
+        <div class="loading-subtext">Running advanced neural analysis & fraud detection scoring models. Please do not close this window.</div>
+    </div>
+</div>
+
+<section class="panel autofill-panel">
+    <div class="panel-heading">
+        <div>
+            <p class="eyebrow">Auto-fill samples</p>
+            <h2>Choose a real transaction instead of typing 30 values</h2>
+        </div>
+    </div>
+
+    <div class="sample-button-grid">
+        <a class="sample-card safe" href="{% url 'fraud_app:predict' %}?sample=legitimate:1">
+            <span>Load</span>
+            <strong>Legitimate sample</strong>
+            <small>Normal transaction from the dataset</small>
+        </a>
+        <a class="sample-card danger" href="{% url 'fraud_app:predict' %}?sample=fraud:1">
+            <span>Load</span>
+            <strong>Fraud sample</strong>
+            <small>Known fraud row from the dataset</small>
+        </a>
+        <a class="sample-card premium" href="{% url 'fraud_app:predict' %}?sample=high:1">
+            <span>Load</span>
+            <strong>High amount sample</strong>
+            <small>Large transaction for quick testing</small>
+        </a>
+    </div>
+
+    <form method="get" class="sample-select-form">
+        <label>
+            <span>Select any prepared transaction</span>
+            <select name="sample">
+                <option value="">Choose transaction sample</option>
+                {% for sample in sample_choices %}
+                <option value="{{ sample.key }}" {% if selected_sample == sample.key %}selected{% endif %}>
+                    {{ sample.label }} | Amount {{ sample.amount|floatformat:"2" }} | Actual {% if sample.actual_class %}Fraud{% else %}Legitimate{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+        <button type="submit" class="secondary-action">Fill selected sample</button>
+    </form>
+
+    {% if loaded_sample %}
+    <div class="sample-loaded-note">
+        Filled with <strong>{{ loaded_sample.label }}</strong>.
+        Actual dataset class:
+        <span class="risk-pill {% if loaded_sample.actual_class %}danger{% else %}safe{% endif %}">
+            {% if loaded_sample.actual_class %}Fraud{% else %}Legitimate{% endif %}
+        </span>
+    </div>
+    {% endif %}
+</section>
+
+<form method="post" class="panel prediction-form">
+    {% csrf_token %}
+    <input type="hidden" name="selected_sample" value="{{ selected_sample }}">
+    <div class="form-grid compact">
+        <label>
+            <span>Time</span>
+            <input type="number" step="any" name="Time" value="{{ form_values.Time }}">
+        </label>
+        <label>
+            <span>Amount</span>
+            <input type="number" step="any" name="Amount" value="{{ form_values.Amount }}">
+        </label>
+    </div>
+
+    <details open>
+        <summary>Model feature values V1 to V28</summary>
+        <div class="form-grid">
+            {% for field in v_feature_fields %}
+            <label>
+                <span>{{ field.name }}</span>
+                <input type="number" step="any" name="{{ field.name }}" value="{{ field.value }}">
+            </label>
+            {% endfor %}
+        </div>
+    </details>
+
+    <div class="form-actions">
+        <button type="submit" class="primary-action">Score transaction</button>
+        <a class="secondary-action" href="{% url 'fraud_app:dashboard' %}">Back to dashboard</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const form = document.querySelector(".prediction-form");
+    const overlay = document.getElementById("loadingOverlay");
+    const statusText = document.getElementById("loadingStatus");
+    
+    if (form && overlay) {
+        form.addEventListener("submit", function(e) {
+            e.preventDefault();
+            
+            // Show loading overlay
+            overlay.classList.add("show");
+            
+            // Loading messages list
+            const messages = [
+                "Analyzing Transaction...",
+                "Extracting Features...",
+                "Running AI Fraud Detection Model...",
+                "Generating Risk Assessment..."
+            ];
+            
+            let messageIdx = 0;
+            const messageInterval = setInterval(function() {
+                if (messageIdx < messages.length - 1) {
+                    messageIdx++;
+                    statusText.style.opacity = 0;
+                    setTimeout(function() {
+                        statusText.textContent = messages[messageIdx];
+                        statusText.style.opacity = 1;
+                    }, 200);
+                }
+            }, 350); // Shift message every 350ms (completes cycle in ~1.4s)
+            
+            // Prepare AJAX payload
+            const formData = new FormData(form);
+            
+            // Submit form via fetch
+            fetch(form.action || window.location.href, {
+                method: "POST",
+                body: formData,
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                    "X-CSRFToken": formData.get("csrfmiddlewaretoken")
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("HTTP error " + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Wait for the simulated animation to finish (at least 1.4s)
+                const remainingTime = Math.max(0, 1400 - (messageIdx * 350));
+                setTimeout(function() {
+                    clearInterval(messageInterval);
+                    if (data.reference_id) {
+                        window.location.href = `/evaluation/${data.reference_id}/`;
+                    } else if (data.error) {
+                        alert("Error: " + data.error);
+                        overlay.classList.remove("show");
+                    }
+                }, remainingTime + 100);
+            })
+            .catch(err => {
+                clearInterval(messageInterval);
+                alert("Network error or invalid server response during analysis: " + err.message);
+                overlay.classList.remove("show");
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

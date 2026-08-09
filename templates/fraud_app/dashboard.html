@@ -1,0 +1,564 @@
+{% extends "fraud_app/base.html" %}
+
+{% block title %}Dashboard | FraudDesk{% endblock %}
+
+{% block content %}
+<section class="hero-panel">
+    <div>
+        <p class="eyebrow">Credit card fraud detection</p>
+        <h1>Credit Card Fraud Detection Analysis</h1>
+        <p class="hero-copy">
+            Analyze transaction patterns, monitor fraud risk, and review model predictions from a secure ML dashboard.
+        </p>
+    </div>
+    <div class="hero-visual" aria-hidden="true">
+        <div class="credit-card-visual">
+            <span class="chip"></span>
+            <span class="card-line short"></span>
+            <span class="card-line"></span>
+            <strong>**** 1234</strong>
+        </div>
+        <div class="cash-visual">$</div>
+        <div class="alert-visual">!</div>
+    </div>
+    <div class="hero-actions">
+        <a class="primary-action" href="{% url 'fraud_app:predict' %}">Run prediction</a>
+        <a class="secondary-action glass-action" href="{% url 'fraud_app:history' %}">View history</a>
+    </div>
+</section>
+
+{% if setup_error %}
+<section class="alert-panel">
+    <strong>Setup needed</strong>
+    <p>{{ setup_error }}</p>
+</section>
+{% else %}
+<section class="panel filter-panel">
+    <div class="panel-heading">
+        <div>
+            <p class="eyebrow">Dashboard filters</p>
+            <h2>Focus the analysis</h2>
+        </div>
+    </div>
+    <form method="get" class="filter-form">
+        <label class="filter-field">
+            <span>Class</span>
+            <select name="class_filter">
+                {% for key, label in metrics.class_options.items %}
+                <option value="{{ key }}" {% if metrics.filters.class_filter == key %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="filter-field">
+            <span>Minimum amount</span>
+            <input type="number" step="any" name="amount_min" value="{{ metrics.filters.amount_min }}">
+        </label>
+        <label class="filter-field">
+            <span>Maximum amount</span>
+            <input type="number" step="any" name="amount_max" value="{{ metrics.filters.amount_max }}">
+        </label>
+        <div class="filter-actions">
+            <button type="submit" class="primary-action">Apply filters</button>
+            <a class="secondary-action" href="{% url 'fraud_app:dashboard' %}">Reset</a>
+        </div>
+    </form>
+</section>
+
+<section class="kpi-grid">
+    <article class="metric-card accent-blue">
+        <div class="metric-topline">
+            <span class="metric-label">Transactions</span>
+            <span class="metric-icon transactions-icon" aria-hidden="true"></span>
+        </div>
+        <strong>{{ metrics.total|floatformat:"0" }}</strong>
+        <small>Rows analyzed from the dataset</small>
+    </article>
+    <article class="metric-card accent-red">
+        <div class="metric-topline">
+            <span class="metric-label">Fraud cases</span>
+            <span class="metric-icon fraud-icon" aria-hidden="true"></span>
+        </div>
+        <strong>{{ metrics.fraud|floatformat:"0" }}</strong>
+        <small>{{ metrics.fraud_rate|floatformat:"4" }} fraud ratio</small>
+    </article>
+    <article class="metric-card accent-green">
+        <div class="metric-topline">
+            <span class="metric-label">Legitimate</span>
+            <span class="metric-icon legitimate-icon" aria-hidden="true"></span>
+        </div>
+        <strong>{{ metrics.legitimate|floatformat:"0" }}</strong>
+        <small>Clean transactions in source data</small>
+    </article>
+    <article class="metric-card accent-purple">
+        <div class="metric-topline">
+            <span class="metric-label">Fraud amount</span>
+            <span class="metric-icon amount-icon" aria-hidden="true"></span>
+        </div>
+        <strong>{{ metrics.fraud_amount|floatformat:"0" }}</strong>
+        <small>Combined amount flagged as fraud</small>
+    </article>
+    <article class="metric-card accent-orange">
+        <div class="metric-topline">
+            <span class="metric-label">Average amount</span>
+            <span class="metric-icon average-icon" aria-hidden="true"></span>
+        </div>
+        <strong>{{ metrics.avg_amount|floatformat:"2" }}</strong>
+        <small>Mean transaction value in this view</small>
+    </article>
+</section>
+
+<!-- Feature 10: Model Prediction History Summary -->
+<div class="panel-heading" style="margin-top: 34px; margin-bottom: 12px;">
+    <div>
+        <p class="eyebrow">System Activity</p>
+        <h2>Model Prediction History Summary</h2>
+    </div>
+</div>
+
+<section class="kpi-grid" style="margin-bottom: 34px;">
+    <article class="metric-card accent-purple">
+        <div class="metric-topline">
+            <span class="metric-label">Total Predictions</span>
+            <span class="metric-icon transactions-icon" aria-hidden="true"></span>
+        </div>
+        <strong>{{ prediction_summary.total_predictions }}</strong>
+        <small>Total scored transactions</small>
+    </article>
+    <article class="metric-card accent-red">
+        <div class="metric-topline">
+            <span class="metric-label">Fraud Predictions</span>
+            <span class="metric-icon fraud-icon" aria-hidden="true"></span>
+        </div>
+        <strong>{{ prediction_summary.fraud_predictions }}</strong>
+        <small>Flagged as fraud</small>
+    </article>
+    <article class="metric-card accent-green">
+        <div class="metric-topline">
+            <span class="metric-label">Legitimate Predictions</span>
+            <span class="metric-icon legitimate-icon" aria-hidden="true"></span>
+        </div>
+        <strong>{{ prediction_summary.legit_predictions }}</strong>
+        <small>Approved transactions</small>
+    </article>
+    <article class="metric-card accent-orange">
+        <div class="metric-topline">
+            <span class="metric-label">Fraud Rate</span>
+            <span class="metric-icon average-icon" aria-hidden="true"></span>
+        </div>
+        <strong>{{ prediction_summary.fraud_rate|floatformat:"2%" }}</strong>
+        <small>Ratio of fraud predictions</small>
+    </article>
+    <article class="metric-card accent-blue">
+        <div class="metric-topline">
+            <span class="metric-label">Average Risk Score</span>
+            <span class="metric-icon amount-icon" aria-hidden="true"></span>
+        </div>
+        <strong>{{ prediction_summary.avg_risk_score|floatformat:"4" }}</strong>
+        <small>Mean model probability</small>
+    </article>
+</section>
+
+<!-- Latest Cases -->
+<section class="dashboard-grid" style="margin-bottom: 34px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));">
+    <article class="panel">
+        <div class="panel-heading" style="border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 15px;">
+            <div>
+                <p class="eyebrow">Latest alert</p>
+                <h2>Latest Fraud Case</h2>
+            </div>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            {% if prediction_summary.latest_fraud %}
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <span class="badge badge-danger">High Risk</span>
+                <span style="font-size: 0.85rem; color: var(--muted);">{{ prediction_summary.latest_fraud.created_date }} {{ prediction_summary.latest_fraud.created_time }}</span>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; line-height: 1.6;">
+                <tr>
+                    <td style="color: var(--muted); font-weight: 500; width: 40%;">Reference ID:</td>
+                    <td style="font-weight: 700; color: var(--ink);"><code>{{ prediction_summary.latest_fraud.reference_id }}</code></td>
+                </tr>
+                <tr>
+                    <td style="color: var(--muted); font-weight: 500;">Probability:</td>
+                    <td style="font-weight: bold;">{{ prediction_summary.latest_fraud.probability|floatformat:"6" }}</td>
+                </tr>
+                <tr>
+                    <td style="color: var(--muted); font-weight: 500;">Status:</td>
+                    <td><span class="badge badge-danger">{{ prediction_summary.latest_fraud.status }}</span></td>
+                </tr>
+                <tr>
+                    <td style="color: var(--muted); font-weight: 500; vertical-align: top;">Action Taken:</td>
+                    <td style="font-size: 0.85rem;">{{ prediction_summary.latest_fraud.action_taken }}</td>
+                </tr>
+            </table>
+            <div style="margin-top: 15px;">
+                <a href="{% url 'fraud_app:transaction_report' prediction_summary.latest_fraud.id %}" target="_blank" class="secondary-action compact-button" style="display: inline-block; font-size: 0.85rem; font-weight: 700; padding: 6px 12px;">View Case Report</a>
+            </div>
+            {% else %}
+            <p class="muted">No fraud transactions evaluated yet.</p>
+            {% endif %}
+        </div>
+    </article>
+
+    <article class="panel">
+        <div class="panel-heading" style="border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 15px;">
+            <div>
+                <p class="eyebrow">Latest approval</p>
+                <h2>Latest Legitimate Case</h2>
+            </div>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            {% if prediction_summary.latest_legit %}
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <span class="badge {% if prediction_summary.latest_legit.risk_level == 'Medium risk' %}badge-warning{% else %}badge-success{% endif %}">
+                    {{ prediction_summary.latest_legit.risk_level }}
+                </span>
+                <span style="font-size: 0.85rem; color: var(--muted);">{{ prediction_summary.latest_legit.created_date }} {{ prediction_summary.latest_legit.created_time }}</span>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; line-height: 1.6;">
+                <tr>
+                    <td style="color: var(--muted); font-weight: 500; width: 40%;">Reference ID:</td>
+                    <td style="font-weight: 700; color: var(--ink);"><code>{{ prediction_summary.latest_legit.reference_id }}</code></td>
+                </tr>
+                <tr>
+                    <td style="color: var(--muted); font-weight: 500;">Probability:</td>
+                    <td style="font-weight: bold;">{{ prediction_summary.latest_legit.probability|floatformat:"6" }}</td>
+                </tr>
+                <tr>
+                    <td style="color: var(--muted); font-weight: 500;">Status:</td>
+                    <td><span class="badge badge-success">{{ prediction_summary.latest_legit.status }}</span></td>
+                </tr>
+                <tr>
+                    <td style="color: var(--muted); font-weight: 500; vertical-align: top;">Action Taken:</td>
+                    <td style="font-size: 0.85rem;">{{ prediction_summary.latest_legit.action_taken }}</td>
+                </tr>
+            </table>
+            <div style="margin-top: 15px;">
+                <a href="{% url 'fraud_app:transaction_report' prediction_summary.latest_legit.id %}" target="_blank" class="secondary-action compact-button" style="display: inline-block; font-size: 0.85rem; font-weight: 700; padding: 6px 12px;">View Case Report</a>
+            </div>
+            {% else %}
+            <p class="muted">No legitimate transactions evaluated yet.</p>
+            {% endif %}
+        </div>
+    </article>
+</section>
+
+<section class="dashboard-grid">
+    <article class="panel chart-panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Class balance</p>
+                <h2>Fraud vs legitimate</h2>
+            </div>
+        </div>
+        <div class="donut-layout">
+            <canvas id="classChart" height="210"></canvas>
+            <div class="chart-legend">
+                <span><i class="legend-dot safe-dot"></i> Legitimate</span>
+                <span><i class="legend-dot danger-dot"></i> Fraud</span>
+            </div>
+        </div>
+    </article>
+
+    <article class="panel chart-panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Trend</p>
+                <h2>Transaction volume over time</h2>
+            </div>
+        </div>
+        <canvas id="trendChart" height="150"></canvas>
+    </article>
+
+    <article class="panel chart-panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Pattern</p>
+                <h2>Fraud by hour</h2>
+            </div>
+        </div>
+        <canvas id="hourlyChart" height="150"></canvas>
+    </article>
+
+    <article class="panel chart-panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Volume</p>
+                <h2>Amount distribution</h2>
+            </div>
+        </div>
+        <canvas id="amountChart" height="150"></canvas>
+    </article>
+
+    <article class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Saved predictions</p>
+                <h2>Model activity</h2>
+            </div>
+            <a href="{% url 'fraud_app:history' %}">View all</a>
+        </div>
+        <div class="split-stat">
+            <div>
+                <span>Legitimate</span>
+                <strong>{{ metrics.prediction_counts.0 }}</strong>
+            </div>
+            <div>
+                <span>Fraud</span>
+                <strong>{{ metrics.prediction_counts.1 }}</strong>
+            </div>
+        </div>
+        <div class="assistant-preview">
+            <span>AI Risk Assistant</span>
+            <p>Use the assistant to explain prediction risk, dashboard charts, and analyst review steps.</p>
+            <a href="{% url 'fraud_app:assistant' %}">Open assistant</a>
+        </div>
+        <div class="activity-list">
+            {% for transaction in recent_predictions %}
+            <div class="activity-item" style="padding: 12px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span class="risk-pill {% if transaction.prediction %}danger{% else %}safe{% endif %}" style="margin-right: 8px;">
+                        {% if transaction.prediction %}Fraud{% else %}Legitimate{% endif %}
+                    </span>
+                    <a href="{% url 'fraud_app:transaction_report' transaction.id %}" target="_blank" style="font-size: 0.75rem; text-decoration: underline; color: var(--blue); font-weight: 700;">Report</a>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--muted);">
+                    <span>Ref: <code>{{ transaction.reference_id }}</code></span>
+                    <span>Prob: <strong>{{ transaction.probability|floatformat:"4" }}</strong></span>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--muted);">
+                    {{ transaction.created_date }} {{ transaction.created_time }}
+                </div>
+            </div>
+            {% empty %}
+            <p class="muted">No predictions saved yet.</p>
+            {% endfor %}
+        </div>
+    </article>
+
+    <article class="panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">Training artifacts</p>
+                <h2>Evaluation plots</h2>
+            </div>
+        </div>
+        <div class="plot-grid">
+            <img src="{% url 'fraud_app:plot_image' 'confusion_matrix' %}" alt="Confusion matrix">
+            <img src="{% url 'fraud_app:plot_image' 'roc_curve' %}" alt="ROC curve">
+            <img src="{% url 'fraud_app:plot_image' 'precision_recall' %}" alt="Precision recall curve">
+        </div>
+    </article>
+</section>
+
+<section class="panel">
+    <div class="panel-heading">
+        <div>
+            <p class="eyebrow">High value</p>
+            <h2>Largest source transactions</h2>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Amount</th>
+                    <th>Class</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in metrics.top_transactions %}
+                <tr>
+                    <td>{{ row.Time|floatformat:"0" }}</td>
+                    <td>{{ row.Amount|floatformat:"2" }}</td>
+                    <td>
+                        <span class="risk-pill {% if row.Class %}danger{% else %}safe{% endif %}">
+                            {% if row.Class %}Fraud{% else %}Legitimate{% endif %}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{{ metrics.hourly_fraud|json_script:"hourly-data" }}
+{{ metrics.amount_distribution|json_script:"amount-data" }}
+{{ metrics.class_distribution|json_script:"class-data" }}
+{{ metrics.transaction_trend|json_script:"trend-data" }}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not setup_error %}
+<script>
+function chartColor(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function drawBarChart(canvasId, labels, values, colors) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext("2d");
+    const width = canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+    const height = canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+    const max = Math.max(...values, 1);
+    const gap = 8 * window.devicePixelRatio;
+    const barWidth = (width - gap * (values.length - 1)) / values.length;
+    ctx.clearRect(0, 0, width, height);
+    values.forEach((value, index) => {
+        const barHeight = (height - 42) * (value / max);
+        const x = index * (barWidth + gap);
+        const y = height - barHeight - 24;
+        const gradient = ctx.createLinearGradient(0, y, 0, height);
+        gradient.addColorStop(0, colors[0]);
+        gradient.addColorStop(1, colors[1]);
+        ctx.fillStyle = gradient;
+        ctx.roundRect(x, y, barWidth, barHeight, 8);
+        ctx.fill();
+        ctx.fillStyle = chartColor("--muted");
+        ctx.font = `${11 * window.devicePixelRatio}px Inter`;
+        ctx.textAlign = "center";
+        if (labels.length <= 12 || index % 3 === 0) {
+            ctx.fillText(labels[index], x + barWidth / 2, height - 6);
+        }
+    });
+}
+
+function drawLineChart(canvasId, labels, values) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext("2d");
+    const ratio = window.devicePixelRatio;
+    const width = canvas.width = canvas.offsetWidth * ratio;
+    const height = canvas.height = canvas.offsetHeight * ratio;
+    const max = Math.max(...values, 1);
+    const padding = 32 * ratio;
+    const plotWidth = width - padding * 2;
+    const plotHeight = height - padding * 1.6;
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.strokeStyle = chartColor("--line");
+    ctx.lineWidth = 1 * ratio;
+    for (let i = 0; i < 4; i += 1) {
+        const y = padding + (plotHeight / 3) * i;
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - padding, y);
+        ctx.stroke();
+    }
+
+    const points = values.map((value, index) => {
+        const x = padding + (plotWidth / Math.max(values.length - 1, 1)) * index;
+        const y = padding + plotHeight - (value / max) * plotHeight;
+        return {x, y};
+    });
+
+    const gradient = ctx.createLinearGradient(0, padding, 0, height - padding);
+    gradient.addColorStop(0, "rgba(37, 99, 235, 0.28)");
+    gradient.addColorStop(1, "rgba(37, 99, 235, 0)");
+    ctx.beginPath();
+    points.forEach((point, index) => index ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y));
+    ctx.lineTo(points[points.length - 1].x, height - padding);
+    ctx.lineTo(points[0].x, height - padding);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    ctx.beginPath();
+    points.forEach((point, index) => index ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y));
+    ctx.strokeStyle = "#2563eb";
+    ctx.lineWidth = 3 * ratio;
+    ctx.stroke();
+
+    points.forEach((point, index) => {
+        if (index % 2 === 0 || index === points.length - 1) {
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 4 * ratio, 0, Math.PI * 2);
+            ctx.fillStyle = "#0ea5e9";
+            ctx.fill();
+        }
+    });
+
+    ctx.fillStyle = chartColor("--muted");
+    ctx.font = `${11 * ratio}px Inter`;
+    ctx.textAlign = "center";
+    labels.forEach((label, index) => {
+        if (index % 2 === 0 || index === labels.length - 1) {
+            ctx.fillText(label, points[index].x, height - 8 * ratio);
+        }
+    });
+}
+
+function drawDonutChart(canvasId, values) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext("2d");
+    const ratio = window.devicePixelRatio;
+    const width = canvas.width = canvas.offsetWidth * ratio;
+    const height = canvas.height = canvas.offsetHeight * ratio;
+    const total = values.reduce((sum, value) => sum + value, 0) || 1;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.min(width, height) * 0.36;
+    const innerRadius = radius * 0.62;
+    let startAngle = -Math.PI / 2;
+    const colors = ["#16a34a", "#e11d48"];
+
+    ctx.clearRect(0, 0, width, height);
+    values.forEach((value, index) => {
+        const slice = (value / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, startAngle, startAngle + slice);
+        ctx.arc(centerX, centerY, innerRadius, startAngle + slice, startAngle, true);
+        ctx.closePath();
+        ctx.fillStyle = colors[index];
+        ctx.fill();
+        startAngle += slice;
+    });
+
+    ctx.fillStyle = chartColor("--ink");
+    ctx.font = `800 ${22 * ratio}px Inter`;
+    ctx.textAlign = "center";
+    ctx.fillText(`${((values[1] / total) * 100).toFixed(2)}%`, centerX, centerY - 2 * ratio);
+    ctx.fillStyle = chartColor("--muted");
+    ctx.font = `700 ${11 * ratio}px Inter`;
+    ctx.fillText("fraud rate", centerX, centerY + 18 * ratio);
+}
+
+const hourly = JSON.parse(document.getElementById("hourly-data").textContent);
+const amounts = JSON.parse(document.getElementById("amount-data").textContent);
+const classes = JSON.parse(document.getElementById("class-data").textContent);
+const trend = JSON.parse(document.getElementById("trend-data").textContent);
+
+drawDonutChart("classChart", classes.map(item => item.count));
+drawLineChart("trendChart", trend.map(item => item.label), trend.map(item => item.count));
+drawBarChart(
+    "hourlyChart",
+    hourly.map(item => item.hour),
+    hourly.map(item => item.count),
+    ["#ff5f6d", "#ffc371"]
+);
+drawBarChart(
+    "amountChart",
+    amounts.map(item => item.label),
+    amounts.map(item => item.count),
+    ["#36d1dc", "#5b86e5"]
+);
+window.addEventListener("resize", () => {
+    drawDonutChart("classChart", classes.map(item => item.count));
+    drawLineChart("trendChart", trend.map(item => item.label), trend.map(item => item.count));
+    drawBarChart("hourlyChart", hourly.map(item => item.hour), hourly.map(item => item.count), ["#ff5f6d", "#ffc371"]);
+    drawBarChart("amountChart", amounts.map(item => item.label), amounts.map(item => item.count), ["#36d1dc", "#5b86e5"]);
+});
+
+document.querySelector("[data-theme-toggle]")?.addEventListener("click", () => {
+    requestAnimationFrame(() => {
+        drawDonutChart("classChart", classes.map(item => item.count));
+        drawLineChart("trendChart", trend.map(item => item.label), trend.map(item => item.count));
+        drawBarChart("hourlyChart", hourly.map(item => item.hour), hourly.map(item => item.count), ["#ff5f6d", "#ffc371"]);
+        drawBarChart("amountChart", amounts.map(item => item.label), amounts.map(item => item.count), ["#36d1dc", "#5b86e5"]);
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

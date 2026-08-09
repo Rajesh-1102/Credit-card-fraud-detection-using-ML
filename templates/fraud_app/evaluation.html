@@ -1,0 +1,320 @@
+{% extends "fraud_app/base.html" %}
+
+{% block title %}Evaluation | FraudDesk{% endblock %}
+
+{% block content %}
+<section class="page-heading no-print" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px; margin-bottom: 30px;">
+    <div>
+        <p class="eyebrow">AI-powered Fraud Detection Report</p>
+        <h1>Transaction Risk Evaluation</h1>
+    </div>
+    <div style="text-align: right; font-size: 0.9rem;">
+        <span style="color: var(--muted); display: block;">Ref ID: <code style="font-weight: 700; color: var(--ink); font-size: 1rem;">{{ transaction.reference_id }}</code></span>
+        <span style="color: var(--muted); display: block; margin-top: 4px;">Generated: <strong>{{ transaction.created_date }} &bull; {{ transaction.created_time }}</strong></span>
+    </div>
+</section>
+
+<!-- Section 2: Transaction Overview (Horizontal Info Card) -->
+<section class="card" style="margin-bottom: 24px; border: 1px solid var(--line);">
+    <div class="card-body" style="padding: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 20px; text-align: center;">
+            <div>
+                <span style="font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px;">💳 Reference ID</span>
+                <code style="font-weight: 700; color: var(--ink);">{{ transaction.reference_id }}</code>
+            </div>
+            <div>
+                <span style="font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px;">💵 Amount</span>
+                <strong style="font-size: 1.05rem;">${{ amount|floatformat:"2" }}</strong>
+            </div>
+            <div>
+                <span style="font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px;">📝 Type</span>
+                <strong>Credit Card</strong>
+            </div>
+            <div>
+                <span style="font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px;">🕒 Prediction Time</span>
+                <strong>{{ transaction.created_time }}</strong>
+            </div>
+            <div>
+                <span style="font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px;">🤖 Model Used</span>
+                <strong>XGBoost AI</strong>
+            </div>
+            <div>
+                <span style="font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px;">⚡ Duration</span>
+                <strong>1.24s</strong>
+            </div>
+            <div>
+                <span style="font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px;">🟢 Status</span>
+                <span class="badge {% if transaction.prediction %}badge-danger{% else %}badge-success{% endif %}">
+                    {{ transaction.status }}
+                </span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="dashboard-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+    <!-- Left Column: Risk & Decisions -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+        
+        <!-- Section 3: Risk Assessment Center Card -->
+        <article class="panel" style="margin-bottom: 0;">
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">Probability Spectrum</p>
+                    <h2>Overall Risk Score</h2>
+                </div>
+                <span class="badge {% if transaction.risk_level == 'High risk' or transaction.risk_level == 'High' %}badge-danger{% elif transaction.risk_level == 'Medium risk' or transaction.risk_level == 'Medium' %}badge-warning{% else %}badge-success{% endif %}" style="font-size: 1rem; padding: 6px 12px;">
+                    {{ transaction.risk_level }}
+                </span>
+            </div>
+            
+            <div class="card-body" style="padding: 20px 0 0 0;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px;">
+                    <span style="font-size: 1.1rem; color: var(--muted); font-weight: 500;">Fraud Risk Probability</span>
+                    <strong style="font-size: 2rem; color: var(--ink);">
+                        {{ risk_score_pct|floatformat:"2" }}%
+                    </strong>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div style="height: 12px; width: 100%; background-color: var(--line); border-radius: 6px; overflow: hidden; margin-bottom: 10px;">
+                    <div style="height: 100%; width: {{ risk_score_pct }}%; 
+                        {% if transaction.prediction %}background-color: var(--red);
+                        {% elif transaction.probability >= 0.35 %}background-color: var(--orange);
+                        {% else %}background-color: var(--green);{% endif %} 
+                        transition: width 0.8s ease;">
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted); font-weight: 600;">
+                    <span>LEGITIMATE (0%)</span>
+                    <span>ELEVATED (35%)</span>
+                    <span>FRAUD (75%)</span>
+                </div>
+            </div>
+        </article>
+
+        <!-- Section 4: AI Decision Panel -->
+        <article class="panel" style="margin-bottom: 0;">
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">XGBoost Classifier Interpretations</p>
+                    <h2>AI Decision Explanation</h2>
+                </div>
+            </div>
+            <div class="card-body" style="padding: 15px 0 0 0;">
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.95rem; line-height: 2;">
+                    <tr style="border-bottom: 1px solid var(--line);">
+                        <td style="color: var(--muted); font-weight: 500; padding: 8px 0;">Classifier Label:</td>
+                        <td style="font-weight: 700; {% if transaction.prediction %}color: var(--red);{% else %}color: var(--green);{% endif %}">
+                            {% if transaction.prediction %}Anomaly / Suspected Fraud{% else %}Legitimate / Normal{% endif %}
+                        </td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--line);">
+                        <td style="color: var(--muted); font-weight: 500; padding: 8px 0;">Model Confidence Score:</td>
+                        <td style="font-weight: bold; color: var(--ink);">
+                            {{ confidence_score|floatformat:"2" }}%
+                        </td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--line);">
+                        <td style="color: var(--muted); font-weight: 500; padding: 8px 0;">Fraud Probability:</td>
+                        <td style="font-weight: 500;">{{ transaction.probability|floatformat:"6" }}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--line);">
+                        <td style="color: var(--muted); font-weight: 500; padding: 8px 0;">Legitimate Probability:</td>
+                        <td style="font-weight: 500;">{{ legit_prob|floatformat:"6" }}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--line);">
+                        <td style="color: var(--muted); font-weight: 500; padding: 8px 0;">Model Name:</td>
+                        <td>XGBoost Fraud Classifier</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--muted); font-weight: 500; padding: 8px 0;">Decision Reasoning:</td>
+                        <td style="font-style: italic; font-weight: 500; color: var(--ink);">
+                            "{{ ai_explanation }}"
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </article>
+
+        <!-- Section 5: Fraud Response Center -->
+        <article class="panel" style="margin-bottom: 0;">
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">Bank Control Desk</p>
+                    <h2>Fraud Response Center</h2>
+                </div>
+            </div>
+            <div class="card-body" style="padding: 15px 0 0 0;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px;">
+                    <div style="border: 1px solid var(--line); border-radius: 12px; padding: 14px; text-align: center; background: var(--surface-soft);">
+                        <span style="font-size: 0.75rem; color: var(--muted); display: block; margin-bottom: 4px; text-transform: uppercase;">Transaction</span>
+                        <strong style="font-size: 1rem; {% if transaction.prediction %}color: var(--red);{% else %}color: var(--green);{% endif %}">
+                            {% if transaction.prediction %}Blocked{% else %}Approved{% endif %}
+                        </strong>
+                    </div>
+                    <div style="border: 1px solid var(--line); border-radius: 12px; padding: 14px; text-align: center; background: var(--surface-soft);">
+                        <span style="font-size: 0.75rem; color: var(--muted); display: block; margin-bottom: 4px; text-transform: uppercase;">Customer Alert</span>
+                        <strong style="font-size: 1rem; color: var(--ink);">
+                            {% if transaction.prediction %}Generated{% else %}Not Required{% endif %}
+                        </strong>
+                    </div>
+                    <div style="border: 1px solid var(--line); border-radius: 12px; padding: 14px; text-align: center; background: var(--surface-soft);">
+                        <span style="font-size: 0.75rem; color: var(--muted); display: block; margin-bottom: 4px; text-transform: uppercase;">Security Alert</span>
+                        <strong style="font-size: 1rem; color: var(--ink);">
+                            {% if transaction.prediction %}Generated{% else %}Not Required{% endif %}
+                        </strong>
+                    </div>
+                    <div style="border: 1px solid var(--line); border-radius: 12px; padding: 14px; text-align: center; background: var(--surface-soft);">
+                        <span style="font-size: 0.75rem; color: var(--muted); display: block; margin-bottom: 4px; text-transform: uppercase;">Verification</span>
+                        <strong style="font-size: 1rem; color: var(--ink);">
+                            {% if transaction.prediction %}Required{% else %}Completed{% endif %}
+                        </strong>
+                    </div>
+                    <div style="border: 1px solid var(--line); border-radius: 12px; padding: 14px; text-align: center; background: var(--surface-soft);">
+                        <span style="font-size: 0.75rem; color: var(--muted); display: block; margin-bottom: 4px; text-transform: uppercase;">Investigation</span>
+                        <strong style="font-size: 1rem; color: var(--ink);">
+                            {% if transaction.prediction %}Pending{% else %}Closed{% endif %}
+                        </strong>
+                    </div>
+                </div>
+            </div>
+        </article>
+    </div>
+
+    <!-- Right Column: Timeline & Actions -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+        
+        <!-- Section 6: Timeline -->
+        <article class="panel" style="margin-bottom: 0;">
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">Audit trace</p>
+                    <h2>Evaluation Timeline</h2>
+                </div>
+            </div>
+            <div class="card-body" style="padding: 15px 0 0 0;">
+                <div class="timeline">
+                    <div class="timeline-item success active">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <p class="timeline-title">Transaction Received</p>
+                            <p class="timeline-description">Logged by system gateway</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item success active">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <p class="timeline-title">Feature Extraction</p>
+                            <p class="timeline-description">Processed time, PCA, and amount values</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item success active">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <p class="timeline-title">Risk Analysis</p>
+                            <p class="timeline-description">Computed baseline parameters</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item success active">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <p class="timeline-title">ML Prediction Completed</p>
+                            <p class="timeline-description">XGBoost model finished scoring</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item success active">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <p class="timeline-title">Decision Generated</p>
+                            <p class="timeline-description">Decision threshold met</p>
+                        </div>
+                    </div>
+                    
+                    {% if transaction.prediction %}
+                    <div class="timeline-item danger active">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <p class="timeline-title">Customer Notification</p>
+                            <p class="timeline-description">Suspicious transaction alert issued</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item danger active">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <p class="timeline-title">Security Alert</p>
+                            <p class="timeline-description">Ticket created in internal security center</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item active">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <p class="timeline-title">Investigation Queue</p>
+                            <p class="timeline-description">Assigned to Fraud Investigation Team</p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="timeline-item success active">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <p class="timeline-title">Transaction Approved</p>
+                            <p class="timeline-description">System cleared transaction</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </article>
+
+        <!-- Section 7: Recommended Actions -->
+        <article class="panel" style="margin-bottom: 0;">
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">Security protocol</p>
+                    <h2>Recommended Actions</h2>
+                </div>
+            </div>
+            <div class="card-body" style="padding: 10px 0 0 0;">
+                <ul class="action-list-items {% if transaction.prediction %}bulletlist{% else %}checklist{% endif %}">
+                    {% if transaction.prediction %}
+                    <li>Freeze Transaction</li>
+                    <li>Verify Customer Identity</li>
+                    <li>Monitor Account Activity</li>
+                    <li>Reset Card PIN</li>
+                    <li>Manual Review Required</li>
+                    {% else %}
+                    <li>Transaction Approved</li>
+                    <li>Continue Monitoring</li>
+                    <li>No Immediate Action Required</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </article>
+    </div>
+</div>
+
+<!-- Section 8: Result Summary -->
+<section class="card" style="margin-top: 24px; border: 1px solid var(--line);">
+    <div class="card-header">Evaluation Summary Log</div>
+    <div class="card-body" style="padding: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; font-size: 0.9rem;">
+            <p style="margin: 0;"><strong>Reference ID:</strong> <code>{{ transaction.reference_id }}</code></p>
+            <p style="margin: 0;"><strong>Prediction:</strong> <span style="font-weight: 700; {% if transaction.prediction %}color: var(--red);{% else %}color: var(--green);{% endif %}">{{ transaction.risk_level }}</span></p>
+            <p style="margin: 0;"><strong>Risk Score:</strong> {{ transaction.probability|floatformat:"4" }}</p>
+            <p style="margin: 0;"><strong>Probability:</strong> {{ risk_score_pct|floatformat:"2" }}%</p>
+            <p style="margin: 0;"><strong>Status:</strong> {{ transaction.status }}</p>
+            <p style="margin: 0;"><strong>Action Taken:</strong> {{ transaction.action_taken }}</p>
+            <p style="margin: 0;"><strong>Date:</strong> {{ transaction.created_date }}</p>
+            <p style="margin: 0;"><strong>Time:</strong> {{ transaction.created_time }}</p>
+        </div>
+    </div>
+</section>
+
+<!-- Section 9: Bottom Action Buttons -->
+<section class="no-print" style="margin-top: 30px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+    <a href="{% url 'fraud_app:predict' %}" class="primary-action" style="padding: 10px 20px; font-weight: 700; font-size: 0.95rem;">New Transaction</a>
+    <a href="{% url 'fraud_app:transaction_report' transaction.id %}" target="_blank" class="secondary-action" style="padding: 10px 20px; font-weight: 700; font-size: 0.95rem;">Download Report</a>
+    <a href="{% url 'fraud_app:history' %}" class="secondary-action" style="padding: 10px 20px; font-weight: 700; font-size: 0.95rem;">Prediction History</a>
+    <a href="{% url 'fraud_app:dashboard' %}" class="secondary-action" style="padding: 10px 20px; font-weight: 700; font-size: 0.95rem;">Dashboard</a>
+</section>
+{% endblock %}

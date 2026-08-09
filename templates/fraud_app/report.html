@@ -1,0 +1,180 @@
+{% extends "fraud_app/base.html" %}
+
+{% block title %}Report #{{ transaction.reference_id }} | FraudDesk{% endblock %}
+
+{% block content %}
+<section class="page-heading no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <div>
+        <p class="eyebrow">Audit report</p>
+        <h1>Transaction Risk Report</h1>
+    </div>
+    <div style="display: flex; gap: 12px;">
+        <button onclick="window.print()" class="primary-action">Print / Save as PDF</button>
+        <a href="{% url 'fraud_app:history' %}" class="secondary-action">Back to history</a>
+    </div>
+</section>
+
+<div class="card" style="max-width: 800px; margin: 0 auto; border: 1px solid var(--line);">
+    <!-- Report Header / Letterhead -->
+    <div style="background-color: var(--surface-soft); border-bottom: 2px solid var(--line); padding: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div>
+            <h2 style="margin: 0; color: var(--blue); font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px;">FRAUDDESK SYSTEMS</h2>
+            <p style="margin: 4px 0 0 0; color: var(--muted); font-size: 0.85rem; font-weight: 600;">Transaction Risk & Security Audit Report</p>
+        </div>
+        <div style="text-align: right;">
+            <p style="margin: 0; font-size: 0.85rem; font-weight: 700;">Reference ID:</p>
+            <code style="font-size: 1.1rem; color: var(--ink); font-weight: 700;">{{ transaction.reference_id }}</code>
+        </div>
+    </div>
+
+    <!-- Report Body -->
+    <div class="card-body" style="padding: 30px;">
+        <!-- Status Banner -->
+        <div style="border-radius: 12px; padding: 20px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; 
+            {% if transaction.prediction %}background-color: rgba(225, 29, 72, 0.1); border: 1px solid var(--red);
+            {% else %}background-color: rgba(22, 163, 74, 0.1); border: 1px solid var(--green);{% endif %}">
+            <div>
+                <span style="font-size: 0.8rem; text-transform: uppercase; font-weight: 800; color: var(--muted); display: block; margin-bottom: 4px;">Security Decision</span>
+                <strong style="font-size: 1.3rem; 
+                    {% if transaction.prediction %}color: var(--red);{% else %}color: var(--green);{% endif %}">
+                    {% if transaction.prediction %}Temporarily Blocked{% else %}Approved Successfully{% endif %}
+                </strong>
+            </div>
+            <div>
+                <span class="badge {% if transaction.prediction %}badge-danger{% else %}badge-success{% endif %}" style="font-size: 0.95rem; padding: 8px 12px;">
+                    {{ transaction.status }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Section: Details Grid -->
+        <div style="margin-bottom: 30px;">
+            <h3 style="border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 16px; font-size: 1.1rem; font-weight: 700;">1. Risk Summary</h3>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px;">
+                <div>
+                    <p style="margin: 0; color: var(--muted); font-size: 0.85rem;">Risk Assessment Level</p>
+                    <strong style="font-size: 1.1rem; display: block; margin-top: 4px;">
+                        <span class="badge {% if transaction.risk_level == 'High risk' or transaction.risk_level == 'High' %}badge-danger{% elif transaction.risk_level == 'Medium risk' or transaction.risk_level == 'Medium' %}badge-warning{% else %}badge-success{% endif %}">
+                            {{ transaction.risk_level }}
+                        </span>
+                    </strong>
+                </div>
+                <div>
+                    <p style="margin: 0; color: var(--muted); font-size: 0.85rem;">Model Fraud Probability</p>
+                    <strong style="font-size: 1.1rem; display: block; margin-top: 4px;">
+                        {{ transaction.probability|floatformat:"6" }}
+                    </strong>
+                </div>
+                <div>
+                    <p style="margin: 0; color: var(--muted); font-size: 0.85rem;">Transaction Amount</p>
+                    <strong style="font-size: 1.1rem; display: block; margin-top: 4px; color: var(--ink);">
+                        ${{ transaction.amount|floatformat:"2" }}
+                    </strong>
+                </div>
+                <div>
+                    <p style="margin: 0; color: var(--muted); font-size: 0.85rem;">Evaluation Date</p>
+                    <strong style="font-size: 1rem; display: block; margin-top: 4px;">{{ transaction.created_date }}</strong>
+                </div>
+                <div>
+                    <p style="margin: 0; color: var(--muted); font-size: 0.85rem;">Evaluation Time</p>
+                    <strong style="font-size: 1rem; display: block; margin-top: 4px;">{{ transaction.created_time }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section: Action Center details -->
+        <div style="margin-bottom: 30px;">
+            <h3 style="border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 16px; font-size: 1.1rem; font-weight: 700;">2. Fraud Action Center</h3>
+            <p style="margin: 0 0 10px 0; font-size: 0.95rem;"><strong>Primary Action Taken:</strong> {{ transaction.action_taken }}</p>
+            
+            <p style="margin: 15px 0 6px 0; font-size: 0.9rem; font-weight: 700; color: var(--muted);">Audit Trail Checklist:</p>
+            <ul class="action-list-items checklist" style="margin-top: 0;">
+                {% if transaction.prediction %}
+                <li>Transaction temporarily blocked</li>
+                <li>Added to investigation queue</li>
+                <li>Customer verification required</li>
+                <li>Security alert generated</li>
+                {% else %}
+                <li>Transaction approved</li>
+                <li>No suspicious activity detected</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <!-- Section: Alerts -->
+        <div style="margin-bottom: 30px;">
+            <h3 style="border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 16px; font-size: 1.1rem; font-weight: 700;">3. Communications & Security Alerts</h3>
+            
+            <!-- Customer Alert Box -->
+            <div style="border: 1px solid var(--line); border-radius: 8px; padding: 15px; margin-bottom: 15px; background: var(--surface-soft);">
+                <strong style="font-size: 0.9rem; color: var(--blue); display: block; margin-bottom: 8px; text-transform: uppercase;">Customer Notification Sent</strong>
+                {% if transaction.prediction %}
+                <div style="font-size: 0.9rem; line-height: 1.5; color: var(--ink); font-family: monospace; white-space: pre-line;">
+                    Dear Customer,
+                    A suspicious transaction has been detected.
+                    Risk Score: {{ transaction.probability|floatformat:"4" }}
+                    Reference ID: {{ transaction.reference_id }}
+                    Status: Temporarily Blocked
+                    Please verify this transaction before further processing.
+                </div>
+                {% else %}
+                <div style="font-size: 0.9rem; line-height: 1.5; color: var(--ink); font-family: monospace; white-space: pre-line;">
+                    Transaction Approved
+                    Reference ID: {{ transaction.reference_id }}
+                    Status: Approved Successfully
+                    No suspicious activity detected.
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Security Team Alert Box (Fraud Only) -->
+            {% if transaction.prediction %}
+            <div style="border: 1px dashed var(--red); border-radius: 8px; padding: 15px; background: rgba(225, 29, 72, 0.03);">
+                <strong style="font-size: 0.9rem; color: var(--red); display: block; margin-bottom: 10px; text-transform: uppercase;">Security Team Alert (Internal)</strong>
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                    <tr>
+                        <td style="padding: 4px 0; font-weight: bold; color: var(--muted);">Alert Status:</td>
+                        <td style="padding: 4px 0; font-weight: bold; color: var(--red);">Alert Generated</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-weight: bold; color: var(--muted);">Assigned Team:</td>
+                        <td style="padding: 4px 0;">Fraud Investigation Team</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-weight: bold; color: var(--muted);">Priority:</td>
+                        <td style="padding: 4px 0;"><span class="badge badge-danger">High</span></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-weight: bold; color: var(--muted);">Response Time:</td>
+                        <td style="padding: 4px 0; font-weight: bold;">Immediate</td>
+                    </tr>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Section: Recommended Actions -->
+        <div>
+            <h3 style="border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 16px; font-size: 1.1rem; font-weight: 700;">4. Recommended Actions</h3>
+            <ul class="action-list-items bulletlist" style="margin-top: 0;">
+                {% if transaction.prediction %}
+                <li>Freeze transaction</li>
+                <li>Verify cardholder identity</li>
+                <li>Monitor account activity</li>
+                <li>Reset PIN</li>
+                <li>Contact customer</li>
+                {% else %}
+                <li>Transaction approved</li>
+                <li>Continue monitoring</li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Report Footer -->
+    <div style="border-top: 1px solid var(--line); padding: 20px; text-align: center; color: var(--muted); font-size: 0.8rem; background: var(--surface-soft);">
+        <p style="margin: 0;">This is a system-generated risk assessment report based on pre-trained Machine Learning scoring.</p>
+        <p style="margin: 4px 0 0 0;">FraudDesk Security Console &bull; Confidential Document</p>
+    </div>
+</div>
+{% endblock %}

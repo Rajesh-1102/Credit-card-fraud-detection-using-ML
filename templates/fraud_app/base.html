@@ -1,0 +1,151 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Fraud Detection{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'fraud_app/styles.css' %}?v=20260518">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <a class="brand" href="{% url 'fraud_app:dashboard' %}">
+                <span class="brand-mark">FD</span>
+                <span>
+                    <strong>FraudDesk</strong>
+                    <small>ML Risk Console</small>
+                </span>
+            </a>
+            <nav class="nav-list" aria-label="Primary navigation">
+                <a class="{% if active_page == 'dashboard' %}active{% endif %}" href="{% url 'fraud_app:dashboard' %}">
+                    <span class="nav-icon dashboard-icon"></span>
+                    Dashboard
+                </a>
+                <a class="{% if active_page == 'predict' %}active{% endif %}" href="{% url 'fraud_app:predict' %}">
+                    <span class="nav-icon predict-icon"></span>
+                    Predict
+                </a>
+                <a class="{% if active_page == 'history' %}active{% endif %}" href="{% url 'fraud_app:history' %}">
+                    <span class="nav-icon history-icon"></span>
+                    History
+                </a>
+                <a class="{% if active_page == 'assistant' %}active{% endif %}" href="{% url 'fraud_app:assistant' %}">
+                    <span class="nav-icon assistant-icon"></span>
+                    AI Assistant
+                </a>
+            </nav>
+            <div class="sidebar-note">
+                <span class="status-dot"></span>
+                Authenticated model console
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div>
+                    <span class="topbar-label">Risk operations</span>
+                    <strong>Credit fraud intelligence</strong>
+                </div>
+                <div class="topbar-actions">
+                    <button class="theme-toggle" type="button" aria-label="Toggle theme" data-theme-toggle>
+                        <!-- Sun Icon (Day) -->
+                        <svg id="theme-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px; display: none;">
+                            <circle cx="12" cy="12" r="4"></circle>
+                            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+                        </svg>
+                        <!-- Moon Icon (Night) -->
+                        <svg id="theme-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px; display: none;">
+                            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+                        </svg>
+                        <!-- System Icon (Monitor) -->
+                        <svg id="theme-system" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px; display: none;">
+                            <rect width="20" height="14" x="2" y="3" rx="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                    </button>
+                    {% if request.user.is_authenticated %}
+                    <div class="user-chip">
+                        <span>{{ request.user.username|first|upper }}</span>
+                        <strong>{{ request.user.username }}</strong>
+                    </div>
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button class="secondary-action compact-button" type="submit">Logout</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </header>
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <script>
+    (function () {
+        const storageKey = "frauddesk-theme";
+        const root = document.documentElement;
+        const button = document.querySelector("[data-theme-toggle]");
+        
+        const sunIcon = document.getElementById("theme-sun");
+        const moonIcon = document.getElementById("theme-moon");
+        const systemIcon = document.getElementById("theme-system");
+        
+        let activeTheme = localStorage.getItem(storageKey) || "system";
+        let mediaListener = null;
+
+        function updateSystemTheme(e) {
+            const matchesDark = e ? e.matches : window.matchMedia('(prefers-color-scheme: dark)').matches;
+            root.dataset.theme = matchesDark ? "dark" : "light";
+        }
+
+        function applyTheme(theme) {
+            activeTheme = theme;
+            localStorage.setItem(storageKey, theme);
+            
+            // Clean up system listener if not in system mode
+            if (theme !== "system" && mediaListener) {
+                window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', updateSystemTheme);
+                mediaListener = null;
+            }
+
+            // Apply dataset class
+            if (theme === "system") {
+                updateSystemTheme();
+                if (!mediaListener) {
+                    mediaListener = updateSystemTheme;
+                    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', mediaListener);
+                }
+            } else {
+                root.dataset.theme = theme;
+            }
+
+            // Update visible SVG icon inside toggle button
+            if (sunIcon) sunIcon.style.display = theme === "light" ? "block" : "none";
+            if (moonIcon) moonIcon.style.display = theme === "dark" ? "block" : "none";
+            if (systemIcon) systemIcon.style.display = theme === "system" ? "block" : "none";
+        }
+
+        applyTheme(activeTheme);
+        
+        if (button) {
+            button.addEventListener("click", function () {
+                // Cycle: light -> dark -> system -> light
+                let nextTheme = "system";
+                if (activeTheme === "light") {
+                    nextTheme = "dark";
+                } else if (activeTheme === "dark") {
+                    nextTheme = "system";
+                } else {
+                    nextTheme = "light";
+                }
+                applyTheme(nextTheme);
+            });
+        }
+    }());
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

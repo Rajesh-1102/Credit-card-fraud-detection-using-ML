@@ -1,0 +1,8 @@
+data/
+artifacts/
+*.csv
+*.png
+*.pkl
+__pycache__/
+logs/
+database/
